@@ -28,10 +28,10 @@ jobs:
           java-version: '17'
           cache: 'gradle'
 
-      - name: Set up Python 3.12 (for Chaquopy build)
+      - name: Set up Python 3.11 (for Chaquopy build)
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: '3.11'
 
       - name: Grant Execute Permission to Gradlew
         run: chmod +x gradlew
@@ -63,7 +63,8 @@ jobs:
           # Find output APK
           APK_SRC="app/build/outputs/apk/release/app-release.apk"
           if [ ! -f "$APK_SRC" ]; then
-            APK_SRC=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
+            APK_SRC=$(find app/build/outputs/apk/release \
+              -name "*.apk" | head -n 1)
           fi
 
           if [ -z "$APK_SRC" ] || [ ! -f "$APK_SRC" ]; then

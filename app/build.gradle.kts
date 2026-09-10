@@ -77,7 +77,7 @@ android {
 
 chaquopy {
     defaultConfig {
-        version = "3.12"
+        version = "3.11"
     }
 }
 
