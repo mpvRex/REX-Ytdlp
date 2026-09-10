@@ -1,0 +1,102 @@
+---
+name: Publish Release
+
+"on":
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and Publish Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Set up Python 3.12 (for Chaquopy build)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Grant Execute Permission to Gradlew
+        run: chmod +x gradlew
+
+      - name: Decode Signing Keystore (Optional)
+        id: keystore
+        run: |
+          if [ -n "${{ secrets.SIGNING_KEYSTORE }}" ]; then
+            echo "${{ secrets.SIGNING_KEYSTORE }}" | base64 -d \
+              > "$GITHUB_WORKSPACE/release.keystore"
+            echo "RELEASE_STORE_FILE=$GITHUB_WORKSPACE/release.keystore" \
+              >> $GITHUB_ENV
+            echo "has_keystore=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_keystore=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build Release APK
+        run: ./gradlew assembleRelease --stacktrace
+        env:
+          RELEASE_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
+      - name: Prepare Release Artifacts & Checksums
+        run: |
+          TAG_NAME="${GITHUB_REF#refs/tags/}"
+
+          # Find output APK
+          APK_SRC="app/build/outputs/apk/release/app-release.apk"
+          if [ ! -f "$APK_SRC" ]; then
+            APK_SRC=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
+          fi
+
+          if [ -z "$APK_SRC" ] || [ ! -f "$APK_SRC" ]; then
+            echo "Error: No APK file found in release output directory"
+            find app/build/outputs -type f
+            exit 1
+          fi
+
+          OUTPUT_APK="REX-Ytdlp-${TAG_NAME}.apk"
+          cp "$APK_SRC" "$OUTPUT_APK"
+
+          SHA256=$(sha256sum "$OUTPUT_APK" | awk '{print $1}')
+          echo "APK_SHA256=$SHA256" >> $GITHUB_ENV
+          echo "RELEASE_APK=$OUTPUT_APK" >> $GITHUB_ENV
+          echo "TAG_NAME=$TAG_NAME" >> $GITHUB_ENV
+
+          if [ -f "$GITHUB_WORKSPACE/release.keystore" ]; then
+            rm "$GITHUB_WORKSPACE/release.keystore"
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: REX Ytdlp ${{ env.TAG_NAME }}
+          body: |
+            ### Checksums
+
+            | File | SHA-256 |
+            | :--- | :--- |
+            | `${{ env.RELEASE_APK }}` | `${{ env.APK_SHA256 }}` |
+          files: ${{ env.RELEASE_APK }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

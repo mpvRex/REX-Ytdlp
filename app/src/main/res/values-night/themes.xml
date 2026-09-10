@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.AppTheme" parent="android:Theme.Material.NoActionBar">
+        
+        <!-- Window Background Color -->
+        <item name="android:windowBackground">@color/window_background</item>
+        
+        <!-- Status/Nav Bar Icon Colors: False means light icons (for dark backgrounds) -->
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item> 
+    </style>
+</resources>
