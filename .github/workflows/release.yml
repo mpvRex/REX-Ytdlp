@@ -65,14 +65,24 @@ jobs:
           fi
 
           mkdir -p release-artifacts
-          for ABI in arm64 arm32 x86 x86_64 universal; do
-            APK_SRC="$(find "app/build/outputs/apk/${ABI}" -name "*.apk" -type f | head -n 1)"
+          CONFIGS=(
+            "arm64:arm64-v8a"
+            "arm32:armeabi-v7a"
+            "universal:universal"
+            "x86:x86"
+            "x86_64:x86_64"
+          )
+
+          for item in "${CONFIGS[@]}"; do
+            FLAVOR="${item%%:*}"
+            ARCH="${item##*:}"
+            APK_SRC="$(find "app/build/outputs/apk/${FLAVOR}" -name "*.apk" -type f | head -n 1)"
             if [ -z "$APK_SRC" ] || [ ! -f "$APK_SRC" ]; then
-              echo "Error: No APK found for ${ABI}"
+              echo "Error: No APK found for ${FLAVOR}"
               find app/build/outputs -type f
               exit 1
             fi
-            cp "$APK_SRC" "release-artifacts/REX-Ytdlp-${TAG_NAME}-${ABI}.apk"
+            cp "$APK_SRC" "release-artifacts/REX-Ytdlp-${ARCH}-${TAG_NAME}.apk"
           done
 
           sha256sum release-artifacts/*.apk > release-artifacts/SHA256SUMS
@@ -101,12 +111,18 @@ jobs:
 
             | File | SHA-256 |
             | :--- | :--- |
-            | `REX-Ytdlp-${{ env.TAG_NAME }}-arm64.apk` | See `SHA256SUMS` |
-            | `REX-Ytdlp-${{ env.TAG_NAME }}-arm32.apk` | See `SHA256SUMS` |
-            | `REX-Ytdlp-${{ env.TAG_NAME }}-x86.apk` | See `SHA256SUMS` |
-            | `REX-Ytdlp-${{ env.TAG_NAME }}-universal.apk` | See `SHA256SUMS` |
-            | `REX-Ytdlp-${{ env.TAG_NAME }}-x86_64.apk` | See `SHA256SUMS` |
-          files: release-artifacts/*
+            | `REX-Ytdlp-arm64-v8a-${{ env.TAG_NAME }}.apk` | See `SHA256SUMS` |
+            | `REX-Ytdlp-armeabi-v7a-${{ env.TAG_NAME }}.apk` | See `SHA256SUMS` |
+            | `REX-Ytdlp-universal-${{ env.TAG_NAME }}.apk` | See `SHA256SUMS` |
+            | `REX-Ytdlp-x86-${{ env.TAG_NAME }}.apk` | See `SHA256SUMS` |
+            | `REX-Ytdlp-x86_64-${{ env.TAG_NAME }}.apk` | See `SHA256SUMS` |
+          files: |
+            release-artifacts/REX-Ytdlp-arm64-v8a-${{ env.TAG_NAME }}.apk
+            release-artifacts/REX-Ytdlp-armeabi-v7a-${{ env.TAG_NAME }}.apk
+            release-artifacts/REX-Ytdlp-universal-${{ env.TAG_NAME }}.apk
+            release-artifacts/REX-Ytdlp-x86-${{ env.TAG_NAME }}.apk
+            release-artifacts/REX-Ytdlp-x86_64-${{ env.TAG_NAME }}.apk
+            release-artifacts/SHA256SUMS
           draft: false
           prerelease: false
           generate_release_notes: true
