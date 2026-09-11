@@ -11,16 +11,48 @@ android {
     compileSdk = 36
     ndkVersion = "27.0.12077973"
 
+    flavorDimensions += "abi"
+
+    productFlavors {
+        create("arm64") {
+            dimension = "abi"
+            ndk {
+                abiFilters += "arm64-v8a"
+            }
+        }
+        create("arm32") {
+            dimension = "abi"
+            ndk {
+                abiFilters += "armeabi-v7a"
+            }
+        }
+        create("x86") {
+            dimension = "abi"
+            ndk {
+                abiFilters += "x86"
+            }
+        }
+        create("x86_64") {
+            dimension = "abi"
+            ndk {
+                abiFilters += "x86_64"
+            }
+        }
+        create("universal") {
+            dimension = "abi"
+            ndk {
+                abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
+            }
+        }
+    }
+
     defaultConfig {
         applicationId = "xyz.mpv.rex.addon.ytdl"
         minSdk = 24
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.0.1"
 
-        ndk {
-            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
-        }
     }
 
     externalNativeBuild {

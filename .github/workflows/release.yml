@@ -49,8 +49,8 @@ jobs:
             echo "has_keystore=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Build Release APK
-        run: ./gradlew assembleRelease --stacktrace
+      - name: Build Release APKs
+        run: ./gradlew assembleArm64Release assembleArm32Release assembleX86Release assembleX86_64Release assembleUniversalRelease --stacktrace
         env:
           RELEASE_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
@@ -58,44 +58,55 @@ jobs:
 
       - name: Prepare Release Artifacts & Checksums
         run: |
-          TAG_NAME="${GITHUB_REF#refs/tags/}"
-
-          # Find output APK
-          APK_SRC="app/build/outputs/apk/release/app-release.apk"
-          if [ ! -f "$APK_SRC" ]; then
-            APK_SRC=$(find app/build/outputs/apk/release \
-              -name "*.apk" | head -n 1)
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            TAG_NAME="${GITHUB_REF#refs/tags/}"
+          else
+            TAG_NAME="${GITHUB_REF_NAME}-${GITHUB_SHA::7}"
           fi
 
-          if [ -z "$APK_SRC" ] || [ ! -f "$APK_SRC" ]; then
-            echo "Error: No APK file found in release output directory"
-            find app/build/outputs -type f
-            exit 1
-          fi
+          mkdir -p release-artifacts
+          for ABI in arm64 arm32 x86 x86_64 universal; do
+            APK_SRC="$(find "app/build/outputs/apk/${ABI}" -name "*.apk" -type f | head -n 1)"
+            if [ -z "$APK_SRC" ] || [ ! -f "$APK_SRC" ]; then
+              echo "Error: No APK found for ${ABI}"
+              find app/build/outputs -type f
+              exit 1
+            fi
+            cp "$APK_SRC" "release-artifacts/REX-Ytdlp-${TAG_NAME}-${ABI}.apk"
+          done
 
-          OUTPUT_APK="REX-Ytdlp-${TAG_NAME}.apk"
-          cp "$APK_SRC" "$OUTPUT_APK"
-
-          SHA256=$(sha256sum "$OUTPUT_APK" | awk '{print $1}')
-          echo "APK_SHA256=$SHA256" >> $GITHUB_ENV
-          echo "RELEASE_APK=$OUTPUT_APK" >> $GITHUB_ENV
+          sha256sum release-artifacts/*.apk > release-artifacts/SHA256SUMS
           echo "TAG_NAME=$TAG_NAME" >> $GITHUB_ENV
 
           if [ -f "$GITHUB_WORKSPACE/release.keystore" ]; then
             rm "$GITHUB_WORKSPACE/release.keystore"
           fi
 
+      - name: Upload Artifacts to Workflow Run
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ytdlp-apks-${{ env.TAG_NAME }}
+          path: release-artifacts/
+          retention-days: 7
+
       - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ env.TAG_NAME }}
           name: REX Ytdlp ${{ env.TAG_NAME }}
           body: |
             ### Checksums
 
             | File | SHA-256 |
             | :--- | :--- |
-            | `${{ env.RELEASE_APK }}` | `${{ env.APK_SHA256 }}` |
-          files: ${{ env.RELEASE_APK }}
+            | `REX-Ytdlp-${{ env.TAG_NAME }}-arm64.apk` | See `SHA256SUMS` |
+            | `REX-Ytdlp-${{ env.TAG_NAME }}-arm32.apk` | See `SHA256SUMS` |
+            | `REX-Ytdlp-${{ env.TAG_NAME }}-x86.apk` | See `SHA256SUMS` |
+            | `REX-Ytdlp-${{ env.TAG_NAME }}-universal.apk` | See `SHA256SUMS` |
+            | `REX-Ytdlp-${{ env.TAG_NAME }}-x86_64.apk` | See `SHA256SUMS` |
+          files: release-artifacts/*
           draft: false
           prerelease: false
           generate_release_notes: true
