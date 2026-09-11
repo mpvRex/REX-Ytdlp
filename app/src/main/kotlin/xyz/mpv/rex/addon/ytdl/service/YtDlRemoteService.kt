@@ -2,8 +2,11 @@ package xyz.mpv.rex.addon.ytdl.service
 
 import android.app.Service
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Binder
 import android.os.Bundle
 import android.os.IBinder
+import android.os.Parcel
 import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -19,7 +22,28 @@ import xyz.mpv.rex.addon.ytdl.ipc.IpcBundleConverter
 class YtDlRemoteService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    private fun enforceCallerSignature() {
+        val callingUid = Binder.getCallingUid()
+        if (callingUid == android.os.Process.myUid()) return
+
+        val callingPackages = packageManager.getPackagesForUid(callingUid) ?: emptyArray()
+        val isAuthorized = callingPackages.any { pkgName ->
+            packageManager.checkSignatures(packageName, pkgName) == PackageManager.SIGNATURE_MATCH
+        }
+
+        if (!isAuthorized) {
+            val err = "Unauthorized caller UID $callingUid (${callingPackages.joinToString()}). Signature mismatch."
+            Log.e(TAG, err)
+            throw SecurityException(err)
+        }
+    }
+
     private val binder = object : IYtDlService.Stub() {
+        override fun onTransact(code: Int, data: Parcel, reply: Parcel?, flags: Int): Boolean {
+            enforceCallerSignature()
+            return super.onTransact(code, data, reply, flags)
+        }
+
         override fun getAddonVersion(): Int = IpcBundleConverter.INTERFACE_VERSION
 
         override fun isReady(): Boolean = runBlocking(Dispatchers.IO) {

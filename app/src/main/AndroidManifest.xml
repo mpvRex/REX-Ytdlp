@@ -4,6 +4,10 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
+    <permission
+        android:name="xyz.mpv.rex.permission.BIND_YTDL_ADDON"
+        android:protectionLevel="signature" />
+
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
@@ -12,7 +16,8 @@
         <!-- Headless companion service -->
         <service
             android:name=".service.YtDlRemoteService"
-            android:exported="true">
+            android:exported="true"
+            android:permission="xyz.mpv.rex.permission.BIND_YTDL_ADDON">
             <intent-filter>
                 <action android:name="xyz.mpv.rex.addon.ytdl.BIND_SERVICE" />
             </intent-filter>
