@@ -10,6 +10,7 @@ data class StreamResolutionResult(
     val uploader: String? = null,
     val httpHeaders: Map<String, String> = emptyMap(),
     val subtitles: Map<String, String> = emptyMap(),
+    val availableQualities: List<VideoQuality> = emptyList(),
     val errorMessage: String? = null,
 ) {
     companion object {

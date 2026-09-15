@@ -40,6 +40,7 @@ object IpcBundleConverter {
     const val KEY_UPLOADER = "uploader"
     const val KEY_HTTP_HEADERS = "http_headers" // Bundle of String -> String
     const val KEY_SUBTITLES = "subtitles"       // Bundle of String -> String
+    const val KEY_VIDEO_QUALITIES_JSON = "video_qualities_json"
     const val KEY_ERROR_MESSAGE = "error_message"
 
     // Playlist Result Keys
@@ -85,6 +86,27 @@ object IpcBundleConverter {
         val subsBundle = Bundle()
         result.subtitles.forEach { (k, v) -> subsBundle.putString(k, v) }
         putBundle(KEY_SUBTITLES, subsBundle)
+
+        if (result.availableQualities.isNotEmpty()) {
+            val jsonArray = JSONArray()
+            for (q in result.availableQualities) {
+                val obj = JSONObject().apply {
+                    put("id", q.id)
+                    put("label", q.label)
+                    put("height", q.height)
+                    put("width", q.width)
+                    put("fps", q.fps)
+                    put("codec", q.codec)
+                    put("bitrate", q.bitrate)
+                    put("video_url", q.videoUrl)
+                    put("audio_url", q.audioUrl)
+                    put("is_dash", q.isDASH)
+                    put("is_audio_only", q.isAudioOnly)
+                }
+                jsonArray.put(obj)
+            }
+            putString(KEY_VIDEO_QUALITIES_JSON, jsonArray.toString())
+        }
     }
 
     fun toBundle(result: PlaylistResult): Bundle = Bundle().apply {
